@@ -13,6 +13,7 @@ Description: Will fetch all changes from the currently selected branch from its 
 
 git push
 Pushes changes onto the remote repository.
+Using -u will create a remote repository on your github remote, for example git push -u origin will create a remote branch for your current branch. Consecutive git pushes dont need this, just the initialization for your remote repository.
 
 git merge <branch_name>
 merge current branch with branch <branch_name>
@@ -22,3 +23,27 @@ Change the base of your current branch to the base of another branch <branch_nam
 
 git fetch
 fetch changes of your remote repository, changes are not stored locally but on your remote branch, to actually store the changes you do git merge origin/<branch_name>
+
+git add <directory>
+Description: moves changes from your working directory to the staging area (also called index), basically "include these files in next commit". Note directory starts where your current directory is.
+
+fun stuff: git add doc/ will add all files to staging area inside <current_directory>/doc/...
+
+git status
+Description: Answers the following questions
+What branch am I on?
+
+What changes have I made?
+
+Which changes are staged for commit?
+
+Which changes are unstaged or untracked?
+
+Is my branch ahead/behind the remote?
+
+
+git log
+Description: log of all the commit history of the repository, starting from most recent commit.
+
+git diff
+Description: will show you all the changes in your current repository. Shows stuff you have changed but not put into the staging area.
