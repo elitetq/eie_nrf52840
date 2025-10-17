@@ -1,6 +1,17 @@
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
+<<<<<<< HEAD
+=======
+/*
+ * main.c
+ */
 
+>>>>>>> f17ee33406c4bfc6127144ab0b01fe609d8aa22c
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/printk.h>
+#include <inttypes.h>
+
+<<<<<<< HEAD
 #define LED0_NODE DT_ALIAS(led0)
 #define LED1_NODE DT_ALIAS(led1)  
 #define LED2_NODE DT_ALIAS(led2)  
@@ -56,4 +67,12 @@ int main(void) {
 
     }
     return 0;
+=======
+int main(void) {
+
+  while(1) {
+
+  }
+	return 0;
+>>>>>>> f17ee33406c4bfc6127144ab0b01fe609d8aa22c
 }
