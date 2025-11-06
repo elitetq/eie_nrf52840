@@ -23,17 +23,13 @@ int main(void) {
     if(0 > BTN_init()) {
         return 0;
     }
-
-    uint8_t current_duty_cycle = 0;
-
-    LED_pwm(LED0,current_duty_cycle);
+    state_machine_init();
 
     while(1) {
-        if(BTN_check_clear_pressed(BTN0)) {
-            current_duty_cycle = current_duty_cycle > 100 ? 0 : (current_duty_cycle + 10);
-            printk("Set LED to %d%% brightness",current_duty_cycle);
-            LED_pwm(LED0,current_duty_cycle);
-        }
+        int ret = state_machine_run();
+            if(0>ret) {
+                return 0;
+            }
         k_msleep(SLEEP_TIME_MS);
     }
 
