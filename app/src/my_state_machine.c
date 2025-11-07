@@ -37,14 +37,20 @@ static const struct smf_state smf_states[] = {
 
 // -------- USEFUL FUNCTIONS --------
 
+/// @brief Reset the binary array of an SMF_OBJ_T object.
+/// @param obj  - The SMF_OBJ_T object you want to reset the array of.
 void reset_ubinary(smf_obj_t *obj) {
     memset(obj->ubinary_code,0,8); // Set binary code to zeroes so far.
 }
-
+/// @brief Reset the char array of an SMF_OBJ_T object.
+/// @param obj - The SMF_OBJ_T object you want to reset the array of.
 void reset_char(smf_obj_t *obj) {
     memset(obj->char_seq,0,50); // Set binary code to zeroes so far.
 }
 
+/// @brief Converts a binary array of 1's and 0's into a character code
+/// @param binary - Binary array (Size MUST be 8 array elements).
+/// @return character of the binary array provided.
 char cnv_binary_char(const uint8_t* binary) {
     // Assuming the binary array is 8 bytes long.
     char result = 0;
