@@ -9,6 +9,12 @@
 static void s0_state_entry(void *o);
 static enum smf_state_result s0_state_run(void *o);
 static void s0_state_exit(void *o);
+static void s1_state_entry(void *o);
+static enum smf_state_result s1_state_run(void *o);
+static void s1_state_exit(void *o);
+static void s2_state_entry(void *o);
+static enum smf_state_result s2_state_run(void *o);
+static void s2_state_exit(void *o);
 
 enum MACHINE_STATES {
     S0,
@@ -21,18 +27,17 @@ enum MACHINE_STATES {
 // Struct object, holds static variables
 typedef struct {
     struct smf_ctx ctx;
-    uint8_t ubinary_code[8];
-    char char_seq[MAX_CHAR];
-    uint8_t seq_index; // used to track where we are in the current sequence
+    uint8_t ubinary_code[8]; // Binary code per character
+    char char_seq[MAX_CHAR]; // String of characters
+    uint8_t char_index; // used to track where we are in the current sequence
+    char cur_char;
 } smf_obj_t;
 
 // SMF States array
 static const struct smf_state smf_states[] = {
     [S0] = SMF_CREATE_STATE(s0_state_entry,s0_state_run,s0_state_exit,NULL,NULL),
-    [S1] = SMF_CREATE_STATE(s0_state_entry,s0_state_run,s0_state_exit,NULL,NULL),
-    [S2] = SMF_CREATE_STATE(s0_state_entry,s0_state_run,s0_state_exit,NULL,NULL),
-    [S3] = SMF_CREATE_STATE(s0_state_entry,s0_state_run,s0_state_exit,NULL,NULL),
-    [S4] = SMF_CREATE_STATE(s0_state_entry,s0_state_run,s0_state_exit,NULL,NULL)
+    [S1] = SMF_CREATE_STATE(s1_state_entry,s1_state_run,s1_state_exit,NULL,NULL),
+    [S2] = SMF_CREATE_STATE(s2_state_entry,s2_state_run,s2_state_exit,NULL,NULL),
 };
 
 // -------- USEFUL FUNCTIONS --------
@@ -46,6 +51,7 @@ void reset_ubinary(smf_obj_t *obj) {
 /// @param obj The SMF_OBJ_T object you want to reset the char array of.
 void reset_char(smf_obj_t *obj) {
     memset(obj->char_seq,0,50); // Set binary code to zeroes so far.
+    obj->char_index = 0;
 }
 
 /// @brief Converts a binary array of 1's and 0's into a character code
@@ -60,6 +66,7 @@ char cnv_binary_char(const uint8_t* binary) {
     }
     return result;
 }
+
 
 
 // ---------- LIGHT EFFECTS -------------
@@ -118,7 +125,7 @@ static smf_obj_t smf_obj;
 void state_machine_init() {
     reset_ubinary(&smf_obj);
     reset_char(&smf_obj);
-    smf_obj.seq_index = 0;
+    smf_obj.cur_char = 0;
     smf_set_initial(SMF_CTX(&smf_obj),&smf_states[S0]);
 }
 
@@ -132,31 +139,99 @@ int state_machine_run() {
  */
 
 static void s0_state_entry(void* o) {
-    printk("Entering s0.\n");
-    LED_blink(LED2,LED_4HZ);
+    printk("Entering 8-bit ASCII sequence...\n");
+    LED_blink(LED2,LED_1HZ);
 }
 
 static enum smf_state_result s0_state_run(void* o) {
     int i = 0;
     while(i < 8) {
-        if(BTN_check_clear_pressed(BTN0)) {
+        if(BTN_check_clear_pressed(BTN0)) { // Set 1 bit
             smf_obj.ubinary_code[i] = 1;
-            //light_fx(2);
+            light_fx(2);
             i++;
-        } else if(BTN_check_clear_pressed(BTN1)) {
+        } else if(BTN_check_clear_pressed(BTN1)) { // Set 0 bit
             smf_obj.ubinary_code[i] = 0;
-            //light_fx(2);
+            light_fx(2);
             i++;
+        } else if(BTN_check_clear_pressed(BTN2)) { // clear
+            reset_ubinary(&smf_obj);
+            reset_char(&smf_obj);
+            i = 0;
+            light_fx(2);
+        } else if(BTN_check_clear_pressed(BTN3)) { // write character
+            if(smf_obj.char_index != MAX_CHAR) {
+                smf_obj.char_seq[smf_obj.char_index++] = smf_obj.cur_char;
+            }
+            light_fx(1);
+            smf_set_state(SMF_CTX(&smf_obj),&smf_states[S1]);
         }
+        k_msleep(1);
     }
-    smf_obj.char_seq[smf_obj.seq_index++] = cnv_binary_char(smf_obj.ubinary_code);
-    printk("%s\n",smf_obj.char_seq);
+    smf_obj.cur_char = cnv_binary_char(smf_obj.ubinary_code);
     
+    printk("Current Character: [%c]\n",smf_obj.cur_char);
+
     k_msleep(500);
-    //light_fx(0);
+    light_fx(0);
     return SMF_EVENT_HANDLED;
 }
 
 static void s0_state_exit(void* o) {
-    printk("Exiting s0.\n");
+    printk("Saving character %c...\n",smf_obj.cur_char);
+}
+
+/*
+* S1: Edit string
+*/
+
+static void s1_state_entry(void* o) {
+    LED_blink(LED2,LED_4HZ);
+}
+
+static enum smf_state_result s1_state_run(void* o) {
+    if(BTN_check_clear_pressed(BTN0) || BTN_check_clear_pressed(BTN1)) {
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
+        light_fx(2);
+    } else if (BTN_check_clear_pressed(BTN2)) { // Clear string
+        reset_char();
+        reset_binary();
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
+    } else if(BTN_check_clear_pressed(BTN3)) { // Save string
+        light_fx(2);
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S2]);
+    }
+    k_msleep(1);
+    return SMF_EVENT_HANDLED;
+}
+
+static void s1_state_exit(void* o) {
+    printk("Saving string...\n");
+}
+
+/*
+*   S2: View string
+*/
+
+static void s2_state_entry(void* o) {
+    LED_blink(LED2,LED_16HZ);
+}
+
+static enum smf_state_result s2_state_run(void* o) {
+    if(BTN_check_clear_pressed(BTN0) || BTN_check_clear_pressed(BTN1)) {
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
+        light_fx(2);
+    } else if (BTN_check_clear_pressed(BTN2)) { // Clear string
+        reset_char();
+        reset_binary();
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
+    } else if(BTN_check_clear_pressed(BTN3)) { // Print string
+        light_fx(2);
+        printk("%s",smf_obj.char_seq);
+    }
+    k_msleep(1);
+    return SMF_EVENT_HANDLED;
+}
+
+static void s2_state_exit(void* o) {
 }
