@@ -158,6 +158,7 @@ static enum smf_state_result s0_state_run(void* o) {
             reset_ubinary(&smf_obj);
             reset_char(&smf_obj);
             i = 0;
+            printk("Cleared binary buffer...\n");
             light_fx(2);
         } else if(BTN_check_clear_pressed(BTN3)) { // write character
             if(smf_obj.char_index != MAX_CHAR) {
@@ -165,12 +166,13 @@ static enum smf_state_result s0_state_run(void* o) {
             }
             light_fx(1);
             smf_set_state(SMF_CTX(&smf_obj),&smf_states[S1]);
+            return SMF_EVENT_HANDLED; // Important since in loop.
         }
         k_msleep(1);
     }
     smf_obj.cur_char = cnv_binary_char(smf_obj.ubinary_code);
     
-    printk("Current Character: [%c]\n",smf_obj.cur_char);
+    printk("Current Character | [%c]\n",smf_obj.cur_char);
 
     k_msleep(500);
     light_fx(0);
@@ -191,11 +193,12 @@ static void s1_state_entry(void* o) {
 
 static enum smf_state_result s1_state_run(void* o) {
     if(BTN_check_clear_pressed(BTN0) || BTN_check_clear_pressed(BTN1)) {
-        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
         light_fx(2);
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
     } else if (BTN_check_clear_pressed(BTN2)) { // Clear string
-        reset_char();
-        reset_binary();
+        reset_char(&smf_obj);
+        reset_ubinary(&smf_obj);
+        printk("Clearing string...\n");
         smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
     } else if(BTN_check_clear_pressed(BTN3)) { // Save string
         light_fx(2);
@@ -206,7 +209,6 @@ static enum smf_state_result s1_state_run(void* o) {
 }
 
 static void s1_state_exit(void* o) {
-    printk("Saving string...\n");
 }
 
 /*
@@ -214,20 +216,24 @@ static void s1_state_exit(void* o) {
 */
 
 static void s2_state_entry(void* o) {
+    printk("Saving string...\n");
     LED_blink(LED2,LED_16HZ);
 }
 
 static enum smf_state_result s2_state_run(void* o) {
     if(BTN_check_clear_pressed(BTN0) || BTN_check_clear_pressed(BTN1)) {
-        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
         light_fx(2);
-    } else if (BTN_check_clear_pressed(BTN2)) { // Clear string
-        reset_char();
-        reset_binary();
         smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
+        return SMF_EVENT_HANDLED;
+    } else if (BTN_check_clear_pressed(BTN2)) { // Clear string
+        reset_char(&smf_obj);
+        reset_ubinary(&smf_obj);
+        printk("Clearing string...\n");
+        smf_set_state(SMF_CTX(&smf_obj),&smf_states[S0]);
+        return SMF_EVENT_HANDLED;
     } else if(BTN_check_clear_pressed(BTN3)) { // Print string
         light_fx(2);
-        printk("%s",smf_obj.char_seq);
+        printk("%s\n",smf_obj.char_seq);
     }
     k_msleep(1);
     return SMF_EVENT_HANDLED;
