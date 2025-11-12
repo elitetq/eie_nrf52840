@@ -38,18 +38,18 @@ static const struct smf_state smf_states[] = {
 // -------- USEFUL FUNCTIONS --------
 
 /// @brief Reset the binary array of an SMF_OBJ_T object.
-/// @param obj  - The SMF_OBJ_T object you want to reset the array of.
+/// @param obj The SMF_OBJ_T object you want to reset the binary array of.
 void reset_ubinary(smf_obj_t *obj) {
     memset(obj->ubinary_code,0,8); // Set binary code to zeroes so far.
 }
 /// @brief Reset the char array of an SMF_OBJ_T object.
-/// @param obj - The SMF_OBJ_T object you want to reset the array of.
+/// @param obj The SMF_OBJ_T object you want to reset the char array of.
 void reset_char(smf_obj_t *obj) {
     memset(obj->char_seq,0,50); // Set binary code to zeroes so far.
 }
 
 /// @brief Converts a binary array of 1's and 0's into a character code
-/// @param binary - Binary array (Size MUST be 8 array elements).
+/// @param binary Binary array (Size MUST be 8 array elements).
 /// @return character of the binary array provided.
 char cnv_binary_char(const uint8_t* binary) {
     // Assuming the binary array is 8 bytes long.
@@ -65,47 +65,41 @@ char cnv_binary_char(const uint8_t* binary) {
 // ---------- LIGHT EFFECTS -------------
 
 void light_fx(char id) {
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 2; i++) {
         LED_set(i,0);
     }
     switch(id) {
-        case 0: // light sweep
+        case 0: // success
             LED_set(LED0,1);
             k_msleep(50);
             LED_set(LED1,1);
-            LED_set(LED2,1);
-            k_msleep(25);
+            k_msleep(100);
             LED_set(LED0,0);
-            k_msleep(25);
-            LED_set(LED3,1);
-            k_msleep(25);
+            k_msleep(50);
             LED_set(LED1,0);
-            LED_set(LED2,0);
-            k_msleep(25);
-            LED_set(LED3,0);
-            break;
-        case 1: // zigzag
+            k_msleep(50);
             LED_set(LED0,1);
-            LED_set(LED3,1);
+            k_msleep(50);
+            LED_set(LED1,1);
             k_msleep(100);
             LED_set(LED0,0);
-            LED_set(LED3,0);
+            k_msleep(50);
+            LED_set(LED1,0);
+            break;
+        case 1: // cool
+            LED_set(LED0,1);
+            k_msleep(100);
+            LED_set(LED0,0);
             LED_set(LED1,1);
-            LED_set(LED2,1);
             k_msleep(100);
             LED_set(LED1,0);
-            LED_set(LED2,0);
             break;
-        case 2: // blink
+        case 2: // confirmation
             LED_set(LED0,1);
             LED_set(LED1,1);
-            LED_set(LED2,1);
-            LED_set(LED3,1);
             k_msleep(100);
             LED_set(LED0,0);
             LED_set(LED1,0);
-            LED_set(LED2,0);
-            LED_set(LED3,0);
             break;
         case 3:
 
@@ -139,6 +133,7 @@ int state_machine_run() {
 
 static void s0_state_entry(void* o) {
     printk("Entering s0.\n");
+    LED_blink(LED2,LED_4HZ);
 }
 
 static enum smf_state_result s0_state_run(void* o) {
@@ -146,11 +141,11 @@ static enum smf_state_result s0_state_run(void* o) {
     while(i < 8) {
         if(BTN_check_clear_pressed(BTN0)) {
             smf_obj.ubinary_code[i] = 1;
-            light_fx(2);
+            //light_fx(2);
             i++;
         } else if(BTN_check_clear_pressed(BTN1)) {
             smf_obj.ubinary_code[i] = 0;
-            light_fx(2);
+            //light_fx(2);
             i++;
         }
     }
@@ -158,7 +153,7 @@ static enum smf_state_result s0_state_run(void* o) {
     printk("%s\n",smf_obj.char_seq);
     
     k_msleep(500);
-    light_fx(0);
+    //light_fx(0);
     return SMF_EVENT_HANDLED;
 }
 
