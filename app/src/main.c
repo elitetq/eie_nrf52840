@@ -18,8 +18,13 @@
 #include <zephyr/kernel.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/printk.h>
+#include "BTN.h"
+#include "LED.h"
 
 /* MACROS --------------------------------------------------------------------------------------- */
+
+#define CHAR_OFFSET 65
+#define CHAR_WIDTH 26
 
 #define BLE_CUSTOM_SERVICE_UUID \
   BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef0)
@@ -73,7 +78,6 @@ BT_GATT_SERVICE_DEFINE(
         NULL,     // Callback for when this characteristic is changed
         BT_GATT_PERM_READ | BT_GATT_PERM_WRITE  // Permissions that connecting devices have
         ),
-
     // End of service definition
 );
 
@@ -108,13 +112,29 @@ static ssize_t ble_custom_service_write(struct bt_conn* conn, const struct bt_ga
   }
   printk("\n");
 
+  if(!strcmp((char*)value,"LED ON")) {
+    LED_set(LED0,1);
+  } else if(!strcmp((char*)value,"LED OFF")) {
+    LED_set(LED0,0);
+  }
+
+  printk("%s\n",value);
+
   return len;
 }
 
 static void ble_custom_service_notify() {
-  static uint32_t counter = 0;
+  static uint32_t counter = CHAR_OFFSET;
+  static char counter_dir = 1;
+  if(BTN_check_clear_pressed(BTN0)) {
+    counter_dir++;
+    counter_dir = counter_dir % 2;
+  }
+  counter = ((counter - CHAR_OFFSET) % CHAR_WIDTH) + CHAR_OFFSET;
   bt_gatt_notify(NULL, &ble_custom_service.attrs[2], &counter, sizeof(counter));
-  counter++;
+  counter_dir == 0 ? counter++ : counter--;
+  if(counter < CHAR_OFFSET)
+    counter = counter_dir == 1 ? CHAR_OFFSET + CHAR_WIDTH - 1 : CHAR_OFFSET;
 }
 
 /* MAIN ----------------------------------------------------------------------------------------- */
@@ -135,6 +155,16 @@ int main(void) {
     printk("Advertising failed to start (err %d)\n", err);
     return 0;
   }
+
+  if(LED_init() < 0) {
+    printk("LED initialization unsuccessful.\n");
+    return 0;
+  }
+  if(BTN_init() < 0) {
+    printk("BTN initialization unsuccessful.\n");
+    return 0;
+  }
+  int flag = 0;
 
   while (1) {
     k_sleep(K_MSEC(1000));
