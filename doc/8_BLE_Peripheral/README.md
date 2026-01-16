@@ -15,6 +15,27 @@ presented to connecting devices.
 For this lesson,
 we'll be trying to replicate and expand on the BLE peripheral example from the last lesson.
 
+### Includes
+
+In order to link everything we need to call, add the following includes to your `main.c`:
+
+```c
+#include <stdio.h>
+#include <string.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/hci.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/display.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/kernel.h>
+#include <zephyr/settings/settings.h>
+#include <zephyr/sys/printk.h>
+```
+
 ### Kconfig Project Configuration
 
 In order to enable the BLE peripheral section of the Zephyr RTOS,
