@@ -9,6 +9,8 @@
 #include "BTN.h"
 #include "LED.h"
 
+#include <math.h>
+
 #define CMD_SOFTWARE_RESET 0x01
 #define CMD_SLEEP_OUT 0x11
 #define CMD_DISPLAY_ON 0x29
@@ -16,7 +18,9 @@
 #define CMD_ROW_ADDRESS_SET 0x2B
 #define CMD_MEMORY_WRITE 0x2C
 
-#define SLEEP_MS
+#define CNV_8_TO_6(x) ((uint8_t)x << 2u)
+
+#define SLEEP_MS 100
 #define ARDUINO_SPI_NODE DT_NODELABEL(arduino_spi)
 #define ZEPHYR_USER_NODE DT_PATH(zephyr_user)
 
@@ -26,12 +30,12 @@ static const struct spi_cs_control cs_ctrl = (struct spi_cs_control) {
   .delay = 0u,
 };
 
-static const struct device * dev = DEVICE_DT_GET(ARDUINO_SPI_MODE);
+static const struct device * dev = DEVICE_DT_GET(ARDUINO_SPI_NODE);
 static const struct spi_config spi_cfg = {
   .frequency = 1000000,
   .operation = SPI_OP_MODE_MASTER | SPI_WORD_SET(8) | SPI_TRANSFER_MSB,
   .slave = 0,
-  .cs = cs_ctrl;
+  .cs = cs_ctrl
 };
 
 static void lcd_cmd(uint8_t cmd, struct spi_buf * data) {
@@ -72,7 +76,31 @@ int main(void) {
   lcd_cmd(CMD_SLEEP_OUT,NULL);
   lcd_cmd(CMD_DISPLAY_ON,NULL);
   
+  uint16_t height = 239;
+  uint16_t length = 319;
+
+  uint8_t column_array[4] = {0x00,0x00,(uint8_t)(length>>8),(uint8_t)(length)};
+  uint8_t row_array[4] = {0x00,0x00,(uint8_t)(height>>8),(uint8_t)(height)};
+  uint8_t color_data[320*240*3];
+
+  for(int i = 0; i < 320 * 240 * 3; i += 3) {
+    color_data[i] = (0x3F << 2);
+    color_data[i+1] = 0;
+    color_data[i+2] = 0;
+  }
+  
+  struct spi_buf column_data = {.buf = column_array, .len = 4};
+  struct spi_buf row_data = {.buf = row_array, .len = 4};
+  struct spi_buf color_data_buf = {.buf = color_data, .len = 320*240*3};
+
+  
+  lcd_cmd(CMD_ROW_ADDRESS_SET,&row_data);
+  lcd_cmd(CMD_COLUMN_ADDRESS_SET,&column_data);
+  lcd_cmd(CMD_MEMORY_WRITE,&color_data_buf);
+
+
   while(1) {
+    printk("Hello\n");
     k_msleep(SLEEP_MS);
   }
 }

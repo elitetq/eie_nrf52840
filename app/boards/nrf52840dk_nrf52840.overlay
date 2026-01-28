@@ -20,11 +20,11 @@
     };
 
     zephyr,user {
-        dcx gpios = <&gpio1 11 GPIO_ACTIVE_HIGH}>;
+        dcx_gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
     };
     
     arduino_spi {
-        cs-gpios = <&gpio1 12 GPIO_ACTIVE_LOW>
+        cs-gpios = <&gpio1 12 GPIO_ACTIVE_LOW>;
     };
 
     aliases {
