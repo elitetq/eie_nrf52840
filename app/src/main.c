@@ -1,4 +1,8 @@
 #include <errno.h>
+/**
+ * @file main.c
+ */
+
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -13,17 +17,6 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/types.h>
 
-static struct bt_conn* my_connection;
-
-static struct bt_uuid_128 BLE_CUSTOM_SERVICE_UUID = 
-  BT_UUID_INIT_128(BT_UUID_128_ENCODE(0x11111111,0x2222,0x3333,0x4444,0x000000000001));
-  
-static struct bt_uuid_128 BLE_CUSTOM_CHARACTER_UUID =
-  BT_UUID_INIT_128(BT_UUID_128_ENCODE(0x11111111,0x2222,0x3333,0x4444,0x000000000002));
-  
-static struct bt_uuid_16 discover_uuid = BT_UUID_INIT_16(0);
-static struct bt_gatt_discover_params discover_params;
-static struct bt_gatt_subscribe_params subscribe_params;
 
 static uint8_t notify_func(struct bt_conn* conn, struct bt_gatt_subscribe_params* params, const void* data, uint16_t length) {
   if(!data) {
@@ -172,13 +165,12 @@ static void ble_on_advertisement_received(const bt_addr_le_t* addr, int8_t rssi,
 
 
 int main(void) {
-  k_msleep(5000);
-  int err = bt_enable(NULL);
-  if(err) {
-    printk("Bluetooth init failed (%d)\n", err);
+  if (0 > BTN_init())
     return 0;
-  } else {
-    printk("Bluetooth initialized.\n");
-  }
-  bt_le_scan_start(BT_LE_SCAN_PASSIVE,ble_on_advertisement_received);
+  if (0 > LED_init())
+    return 0;
+
+  while (1) 
+    k_msleep(SLEEP_MS);
+  return 0;
 }
