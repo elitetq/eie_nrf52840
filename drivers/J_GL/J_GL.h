@@ -10,6 +10,8 @@
 #include <zephyr/drivers/i2c.h>
 #include <inttypes.h>
 #include <math.h>
+#include <j_assets.h>
+#include <stdlib.h>
 
 // Touch Sensor Registry Address Defines
 #define TD_ADDR 0x38
@@ -23,6 +25,8 @@
 #define TOUCH_EVENT_SHIFT 6
 
 #define TOUCH_POS_MSB_MASK 0x0F
+
+#define J_LOAD_ASSETS
 
 typedef enum {
   TOUCH_EVENT_PRESS_DOWN = 0b00u,
@@ -39,9 +43,11 @@ typedef enum {
 #define CMD_COLUMN_ADDRESS_SET 0x2A
 #define CMD_ROW_ADDRESS_SET 0x2B
 #define CMD_MEMORY_WRITE 0x2C
+#define CMD_COL_MOD 0x3A
 
 #define LCD_MAX_HEIGHT (uint16_t)0x00EF 
 #define LCD_MAX_LENGTH (uint16_t)0x013F
+#define LCD_BUF_DIV 2
 // -----------------------
 #define CNV_8_TO_6(x) ((uint8_t)x << 2u)
 
@@ -88,6 +94,6 @@ void set_bounds(uint16_t* user_list);
 void touch_control_cmd_rsp(uint8_t cmd, uint8_t* rsp);
 uint32_t get_pos();
 void draw_square(uint16_t x, uint16_t y, uint16_t size);
-void draw_circle(uint16_t x, uint16_t y, uint16_t radius);
+int draw_circle(uint16_t x, uint16_t y, uint16_t radius);
 
 #endif

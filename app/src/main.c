@@ -13,7 +13,7 @@
 #include "LED.h"
 
 #include <math.h>
-#include <J_GL.h>
+#include "J_GL.h"
 
 #define BOX_SIZE (uint16_t)20
 
@@ -33,7 +33,7 @@ static const struct device * dev = DEVICE_DT_GET(ARDUINO_SPI_NODE);
 #define ARDUINO_I2C_NODE DT_NODELABEL(arduino_i2c)
 static const struct device * dev_i2c = DEVICE_DT_GET(ARDUINO_I2C_NODE);
 static const struct spi_config spi_cfg = {
-  .frequency = 6000000,
+  .frequency = 15000000,
   .operation = SPI_OP_MODE_MASTER | SPI_WORD_SET(8) | SPI_TRANSFER_MSB,
   .slave = 0,
   .cs = cs_ctrl
@@ -62,9 +62,11 @@ int main(void) {
   lcd_cmd(CMD_SLEEP_OUT,NULL);
   lcd_cmd(CMD_DISPLAY_ON,NULL);
   uint8_t R, G, B;
-  draw_color_fs((uint8_t[]){0x00,0x00,0x00});
+  set_bounds((uint16_t[]){0,LCD_MAX_HEIGHT,0,LCD_MAX_LENGTH});
+  draw_color_fs((uint8_t[]){0x00,0x00,0xFF});
 
   while(1) {
+
     uint8_t touch_response;
     uint16_t x_pos, y_pos;
     uint32_t position;
@@ -73,10 +75,8 @@ int main(void) {
       position = get_pos();
       x_pos = (uint16_t)(position >> 16);
       y_pos = (uint16_t)(position);
-      printk("coords: %d %d\n",y_pos,x_pos);
-      draw_circle(x_pos,y_pos,(uint16_t)30);
+      draw_square(x_pos,y_pos,8);
     }
-    k_msleep(10);
   }
   return 0;
 }
