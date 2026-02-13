@@ -14,6 +14,7 @@
 
 #include <math.h>
 #include "J_GL.h"
+#include "J_ASSETS.h"
 
 #define BOX_SIZE (uint16_t)20
 
@@ -64,9 +65,10 @@ int main(void) {
   uint8_t R, G, B;
   set_bounds((uint16_t[]){0,LCD_MAX_HEIGHT,0,LCD_MAX_LENGTH});
   draw_color_fs((uint8_t[]){0x00,0x00,0xFF});
+  k_msleep(1000);
+  draw_image(0,0,img3);
 
-  while(1) {
-
+  while(0) {
     uint8_t touch_response;
     uint16_t x_pos, y_pos;
     uint32_t position;

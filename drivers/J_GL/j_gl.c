@@ -117,3 +117,34 @@ void draw_square(uint16_t x, uint16_t y, uint16_t size) {
   set_bounds(bound_buff);
   draw_color_fs(pixel_color_shape);
 }
+
+void draw_image(uint16_t x, uint16_t y, const uint8_t* img_data) {
+  uint16_t height = (img_data[0] << 8) | img_data[1];
+  uint16_t length = (img_data[2] << 8) | img_data[3];
+  size_t size = length * height * 3;
+  size_t chunk_size = 30000;
+  if(size < 30000)
+    chunk_size = size;
+  size_t repeats = (size / chunk_size);
+  img_data = img_data + 4; // Image data actually starts here
+  set_bounds((uint16_t[]){y, y + length, x, x + height});
+  cmd_bounds();
+  printk("Drawing image with %d repeats, %d chunk size, %d size, (%dx%d)\n",repeats,chunk_size,size,length,height);
+  k_msleep(10);
+  struct spi_buf color_data_buf = {.buf = img_data, .len = chunk_size};
+  struct spi_buf_set color_data_set = {.buffers = &color_data_buf, .count = 1};
+  k_msleep(5);
+  lcd_cmd(CMD_MEMORY_WRITE,NULL);
+  
+  gpio_pin_set_dt(J_CONTAINER_t.dcx_gpio,1);
+  for(int i = 0; i < repeats; i++) {
+    spi_write(J_CONTAINER_t.dev_spi,J_CONTAINER_t.spi_cfg,&color_data_set);
+    img_data += chunk_size;
+    color_data_buf.buf = img_data;
+    printk("%d\n",i);
+  }
+  chunk_size = size - chunk_size*repeats;
+  color_data_buf.len = chunk_size;
+  spi_write(J_CONTAINER_t.dev_spi,J_CONTAINER_t.spi_cfg,&color_data_set);
+  printk("Donezo\n");
+}
