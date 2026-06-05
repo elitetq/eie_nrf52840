@@ -595,6 +595,7 @@ void ram_draw_cb(const struct device *dev, int result, void *data) {
   //printk("Write flag is set to 1\n");
 }
 
+// NOTE: X and Y coords are flipped for this specific driver (aka height is x and length is y)
 void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animation_data* anim) {  
   const uint8_t* img_data = (uint8_t*)component->dat;
   uint16_t height = (img_data[0] << 8) | img_data[1];
@@ -625,6 +626,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   img_data = img_data + 4 + (y_coord < 0 ? length * -3 * y_coord : 0); // Image data actually starts here
   
 
+  // 
   if(ram_cmd[2] == ram_cmd[0] && ram_cmd[3] == ram_cmd[1]) {
     ram_cmd[0] = NULL; // No cropping needed, simplify spi write.
     chunk_size = (RAM_DATA_SIZE/(length*8)) * (length*8);

@@ -228,7 +228,6 @@ static void snake_reset_state_entry(void* o) {
 }
 
 static enum smf_state_result snake_reset_state_run(void* o) {
-  printk("Entered state here");
   smf_set_state(SMF_CTX(&sos_object),&sos_states[SNAKE_GAME]);
   return SMF_EVENT_HANDLED;
 }
@@ -301,6 +300,7 @@ static void snake_game_state_entry(void* o) {
                 Snake Game Functions
 ----------------------------------------------------------*/
 
+// Convert an integer to a string, and store the result in str_ret
 void int_to_str(int num, char* str_ret, int max_len) {
   uint8_t index = 0;
   char temp = 0;
@@ -324,14 +324,13 @@ void int_to_str(int num, char* str_ret, int max_len) {
   str_ret[index] = 0; // Null operator
 }
 
+// Draw coords with tile_info color
 void sg_draw_coords(os_snake_game_ctx* dat_ptr, uint8_t *x_l, uint8_t *y_l, sg_tile tile_info) {
   if(*x_l < 1 || *x_l > 10 || *y_l < 1 || *y_l > 10) return;
-  printk("Tryna print\n");
   uint16_t x_r, y_r;
   x_r = dat_ptr->x_board_offset + 20*(*x_l-1);
   y_r = dat_ptr->y_board_offset + 20*(*y_l-1);
   j_component* comp;
-  printk("Success!");
   dat_ptr->game_array[SG_COORDS_TO_INDEX(*x_l,*y_l)] = tile_info;
   if(tile_info == SG_FILL) {
     comp = dat_ptr->snake_shape_comp_dat;
@@ -346,6 +345,7 @@ void sg_draw_coords(os_snake_game_ctx* dat_ptr, uint8_t *x_l, uint8_t *y_l, sg_t
   }
 }
 
+// Clear chosen coords with the background color
 void sg_clear_coords(os_snake_game_ctx* dat_ptr, uint8_t *x_l, uint8_t *y_l) {
   if(*x_l < 1 || *x_l > 10 || *y_l < 1 || *y_l > 10) return;
   uint16_t x_r, y_r;
@@ -363,6 +363,7 @@ void sg_clear_coords(os_snake_game_ctx* dat_ptr, uint8_t *x_l, uint8_t *y_l) {
   shape_dat->col = old_col;
 }
 
+// Draw the snake with a chosen color
 void redraw_snake(os_snake_game_ctx* dat_ptr, j_color col) {
   j_shape_data *shape_dat = &dat_ptr->shape_dat;
   uint8_t *game_array = dat_ptr->game_array;
@@ -379,6 +380,7 @@ void redraw_snake(os_snake_game_ctx* dat_ptr, j_color col) {
   shape_dat->col = prev_col;
 }
 
+// Draw snake eyes (CUTE)
 void draw_eyes(os_snake_game_ctx* dat_ptr, uint8_t *x_l, uint8_t *y_l) {
   uint8_t x_r = dat_ptr->x_board_offset + 20*(*x_l-1); // Find local x and y coordinates
   uint8_t y_r = dat_ptr->y_board_offset + 20*(*y_l-1);
@@ -395,20 +397,20 @@ void draw_eyes(os_snake_game_ctx* dat_ptr, uint8_t *x_l, uint8_t *y_l) {
   draw_component(comp);
 }
 
+// Randomized pellet generation
 void sg_generate_pellet(os_snake_game_ctx* dat_ptr) {
   if(99 - dat_ptr->snake_len - dat_ptr->pellet_amt <= 0) return; // not enough space
 
   j_color pellet_colors[4] = {BABY_BLUE,RED,MAGENTA,YELLOW};
   uint8_t pellet_index = sys_rand8_get();
   pellet_index = pellet_index % 100;
-  printk("%d\n",pellet_index);
   dat_ptr->pellet_decal_dat.bg_col = pellet_colors[pellet_index%4]; // Randomize pellet colors
 
   uint8_t local_index = 0;
   uint8_t *array = dat_ptr->game_array;
   uint8_t local_i = 0;
   bool skipped = false;
-  for(int i = 0; i <= pellet_index; i++) {
+  for(int i = 0; i <= pellet_index; i++) { // For loop so we dont accidentally end up in a forever loop
     local_i%=100;
     local_i++;
     while(array[local_i]) {
@@ -416,7 +418,7 @@ void sg_generate_pellet(os_snake_game_ctx* dat_ptr) {
       local_i%=100;
     }
   }
-  while(dat_ptr->game_array[local_i]) {
+  while(dat_ptr->game_array[local_i]) { // Fail condition, ideally this will never be reached, but it is here just in case for debug purposes
     printk("FAILED\n");
   }
   dat_ptr->temp_pellet_x = SG_INDEX_TO_X_COORD(local_i);
@@ -756,7 +758,6 @@ static enum smf_state_result lock_screen_state_run(void* o) {
           k_msleep(2000);
           draw_screen_o(NULL,0);
 
-          printk("Entered incorrect\n");
           return SMF_EVENT_HANDLED;
         };
       }
@@ -765,7 +766,6 @@ static enum smf_state_result lock_screen_state_run(void* o) {
       draw_component(page_dat->message_comp_ptr);
       k_msleep(2000);
 
-      printk("Entered correct\n");
       // If not first time, and correct password is input, code will end up here
       smf_set_state(SMF_CTX(&sos_object),&sos_states[HOME_SCREEN]);
     }
@@ -783,7 +783,6 @@ static void lock_screen_state_exit(void* o) {
 }
 
 static void about_page_state_entry(void* o) {
-  printk("Entering about page...");
   os_state_ctx* ctx = (os_state_ctx*)o;
   memset(&ctx->page_dat,0,sizeof(os_about_page_ctx));
   os_about_page_ctx* page_dat = &ctx->page_dat.about_page_dat;
