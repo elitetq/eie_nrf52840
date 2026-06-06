@@ -555,9 +555,9 @@ int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t* ram_c
     if(anim_dat != NULL) {
       uint8_t bg_col_B, bg_col_G, bg_col_R;
       uint8_t *percentage = &(anim_dat->percentage);
-      bg_col_B = anim_dat->bg_col;
+      bg_col_B = anim_dat->bg_col & 0x0000FF;
       bg_col_G = (anim_dat->bg_col & 0x00FF00) >> 8;
-      bg_col_R = (anim_dat->bg_col & 0x0000FF) >> 16;
+      bg_col_R = (anim_dat->bg_col & 0xFF0000) >> 16;
       for(size_t i = 0; i < len; i+=3) { 
         ram_data[i] = (*percentage * data[i] + (100 - *percentage) * bg_col_B)/100;
         ram_data[i+1] = (*percentage * data[i+1] + (100 - *percentage) * bg_col_G)/100;

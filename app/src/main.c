@@ -15,6 +15,7 @@
 #include <math.h>
 #include "J_GL.h"
 #include "J_ASSETS.h"
+#include "SOJOURN_ASSETS.h"
 
 #include "sojourn_os_smf.h"
 

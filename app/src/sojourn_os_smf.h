@@ -10,6 +10,7 @@
 #include <zephyr/drivers/i2c.h>
 #include "J_GL.h"
 #include "J_ASSETS.h"
+#include "SOJOURN_ASSETS.h"
 #include <stdio.h>
 
 
