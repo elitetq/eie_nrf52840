@@ -10,8 +10,8 @@ static j_component* temp_component = NULL;
 ----------------------------------------------------------*/
 // Here I use two different buffers, the first buffer is mainly used for all
 // the regular draws, but the second (color_data_2) is an aux buffer used in
-// the ram draw function to bounce between the two buffers for maximum refresh
-// speed during large arrays like images.
+// the ram draw function to bounce between the two buffers for optimal refresh
+// speeds during large arrays like images.
 static volatile uint8_t color_data[(LCD_MAX_LENGTH+1)*(LCD_MAX_HEIGHT+1)*3/LCD_BUF_DIV];
 static volatile uint8_t color_data_2[RAM_DATA_SIZE];
 
@@ -30,6 +30,11 @@ static j_linked_list comp_linked_list = {.start = NULL, .end = NULL};
 
 static j_spi_ctx J_CTX1 = {color_data_2,color_data,0x00}; // Used in ram_draw function
 
+typedef struct {
+  uint16_t x_l, x_h;
+  uint16_t og_x_len;
+  uint8_t ram_load_flags; // [ N/A N/A N/A N/A N/A N/A N/A crop_flag]
+} ram_load_ctx;
 /*----------------------------------------------------------
                     Shape Draw Handlers
 ----------------------------------------------------------*/
@@ -507,7 +512,7 @@ int draw_text(uint16_t x, uint16_t y, char* str, uint8_t font_size, j_color FILL
   }
 }
 
-int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t* ram_crop, j_animation_data* anim_dat, j_component* comp) {
+int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_ctx ram_ctx, j_animation_data* anim_dat, j_component* comp) {
   // ram_crop has the following data: [OG_X, OG_Y, CROP_X, CROP_Y, LR]
   size_t pixel_count, k;
   k = pixel_count = 0;
@@ -516,7 +521,7 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t*
   j_color bg_col = decal_dat == NULL ? BLACK : decal_dat->bg_col;
   j_color ret_byte = 0x00;
 
-  if(ram_crop[0] == 0) {
+  if((ram_ctx.ram_load_flags & 0x01) == 0) {
     if(anim_dat != NULL) { // Animation
       uint8_t *percentage = &(anim_dat->percentage);
       j_color bg_col_user = anim_dat->bg_col;
@@ -548,9 +553,9 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t*
   //NOTE: NO crop algorithm for decals.
 }
 
-int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t* ram_crop, j_animation_data* anim_dat, j_component* comp) {
+int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_ctx ram_ctx, j_animation_data* anim_dat, j_component* comp) {
   // ram_crop has the following data: [OG_X, OG_Y, CROP_X, CROP_Y, LR]
-  if(ram_crop[0] == 0) {
+  if((ram_ctx.ram_load_flags & 0x01) == 0) {
 
     if(anim_dat != NULL) { // Animations (FADEIN-FADEOUT)
       uint8_t bg_col_B, bg_col_G, bg_col_R;
@@ -570,18 +575,18 @@ int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t* ram_c
     }
     return len;
   } else { // Crop algorithm
-    uint16_t OG_X, OG_Y, CROP_X, CROP_Y, LR;
-    OG_X = ram_crop[0];
-    OG_Y = ram_crop[1];
-    CROP_X = ram_crop[2];
-    CROP_Y = ram_crop[3];
-    LR = ram_crop[4];
-    size_t i = 0;
-    size_t delta = 0;
-    for(; i < len; i++) {
-      ram_data[i] = data[i + ((i/(CROP_X * 3))+LR)*(OG_X-CROP_X)*3];
+    uint16_t X_L,X_H,LINE_LENGTH,OFFSET_LENGTH,CROP_LINE_LENGTH;
+    X_L = ram_ctx.x_l;
+    X_H = ram_ctx.x_h;
+
+    LINE_LENGTH = ram_ctx.og_x_len * 3;
+    CROP_LINE_LENGTH = (X_H-X_L)*3;
+    OFFSET_LENGTH = X_L * 3;
+    for(size_t i = 0; i < len; i++) {
+      ram_data[i] = data[OFFSET_LENGTH + LINE_LENGTH*(i/CROP_LINE_LENGTH) + i%CROP_LINE_LENGTH];
+    
     }
-    return len + ((len/(CROP_X*3)))*(OG_X-CROP_X)*3;
+    return LINE_LENGTH*(len/CROP_LINE_LENGTH);
   }
 }
 
@@ -595,13 +600,17 @@ void ram_draw_cb(const struct device *dev, int result, void *data) {
   //printk("Write flag is set to 1\n");
 }
 
-// NOTE: X and Y coords are flipped for this specific driver (aka height is x and length is y)
 void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animation_data* anim) {  
+
   const uint8_t* img_data = (uint8_t*)component->dat;
   uint16_t height = (img_data[0] << 8) | img_data[1];
   uint16_t length = (img_data[2] << 8) | img_data[3];
 
-  int (*ram_draw_func)(uint8_t*, const uint8_t*, size_t, uint16_t*, j_animation_data*, j_component*) = component->type - J_IMAGE ? ram_load_decal : ram_load; // Load decal or image
+  // Flipped!
+  uint16_t LCD_LENGTH = LCD_MAX_HEIGHT;
+  uint16_t LCD_HEIGHT = LCD_MAX_LENGTH;
+
+  int (*ram_draw_func)(uint8_t*, const uint8_t*, size_t, ram_load_ctx, j_animation_data*, j_component*) = component->type - J_IMAGE ? ram_load_decal : ram_load; // Load decal or image
   
   uint16_t x, y;
   if(x_coord > 0)
@@ -614,11 +623,31 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   else
     y = 0;
 
-  uint16_t LR = x > 0 ? 1 : 0; // Left/Right crop (1 for Right, 0 for Left)
-  uint16_t upper_height = x_coord + length - 1 < LCD_MAX_HEIGHT ? x_coord + length - 1 : LCD_MAX_HEIGHT;
-  uint16_t upper_length = y_coord + height - 1 < LCD_MAX_LENGTH ? y_coord + height - 1 : LCD_MAX_LENGTH;
+  uint16_t upper_length = x_coord + length - 1 < LCD_LENGTH ? x_coord + length - 1 : LCD_LENGTH;
+  uint16_t upper_height = y_coord + height - 1 < LCD_HEIGHT ? y_coord + height - 1 : LCD_HEIGHT;
 
-  uint16_t ram_cmd[5] = {length, height, upper_height - x + 1, upper_length - y + 1, LR};
+  uint16_t y_l, y_h;
+
+  ram_load_ctx ram_cmd = {
+    .x_l = 0,
+    .x_h = 0,
+    .og_x_len = length,
+    .ram_load_flags = 0
+  };
+  if(x_coord + length - 1 > 0 && x_coord < LCD_LENGTH) {
+    ram_cmd.x_l = x - x_coord;
+    ram_cmd.x_h = upper_length - x_coord + 1;
+    ram_cmd.ram_load_flags |= 0x01;
+  } else return;
+  if(y_coord + height - 1 > 0 && y_coord < LCD_HEIGHT) {
+    y_l = y - y_coord;
+    y_h = upper_height - y_coord + 1;
+    ram_cmd.ram_load_flags |= 0x01;
+  } else return;
+
+  if(y_l == 0 && y_h == height && ram_cmd.x_l == 0 && ram_cmd.x_h == length) ram_cmd.ram_load_flags &= ~0x01;
+
+  // uint16_t ram_cmd[5] = {length, height, upper_height - x + 1, upper_length - y + 1, LR};
   size_t ram_cmd_ret;
   size_t chunk_size;
 
@@ -627,13 +656,13 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   
 
   // 
-  if(ram_cmd[2] == ram_cmd[0] && ram_cmd[3] == ram_cmd[1]) {
-    ram_cmd[0] = 0; // No cropping needed, simplify spi write.
-    chunk_size = (RAM_DATA_SIZE/(length*8)) * (length*8);
-  } else {
-    height = ram_cmd[3];
-    length = ram_cmd[2];
+  if(ram_cmd.ram_load_flags & 0x01) {
+    length = ram_cmd.x_h - ram_cmd.x_l;
+    height = y_h - y_l;
     chunk_size = (RAM_DATA_SIZE/(length*3)) * (length*3);
+  }
+  else {
+    chunk_size = (RAM_DATA_SIZE/(length*8)) * (length*8);
   }
 
   size_t size = length * height * 3;
@@ -642,7 +671,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
 
   size_t offset = chunk_size;
   size_t repeats = (size / chunk_size);
-  set_bounds((uint16_t[]){x, upper_height, y, upper_length});
+  set_bounds((uint16_t[]){x, upper_length, y, upper_height});
   cmd_bounds();
   printk("RAM_DRAW_IMAGE: Image draw w/ %d repeats, %d chunk size, %d size, (%dx%d)\n\n",repeats,chunk_size,size,length,height);
   k_msleep(10);

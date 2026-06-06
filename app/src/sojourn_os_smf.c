@@ -42,12 +42,12 @@ void state_machine_init() {
   J_init(dev,dev_i2c,&spi_cfg,&dcx_gpio,bounds);
   J_LCD_init();
   draw_color_fs(BLACK);
-  // j_component* component1 = create_component("ImageTest",J_IMAGE,-50,0,img1,NULL);
-  // add_component_o(component1);
-  // draw_screen_o(NULL,0);
+  j_component* component1 = create_component("ImageTest",J_IMAGE,-50,0,img1,NULL);
+  add_component_o(component1);
+  draw_screen_o(NULL,0);
   set_theme(VOID);
   sos_object.os_flags = 0b10000000;
-  smf_set_initial(SMF_CTX(&sos_object),&sos_states[SHUT_DOWN]);
+  // smf_set_initial(SMF_CTX(&sos_object),&sos_states[SHUT_DOWN]);
 }
 
 int state_machine_run() {
