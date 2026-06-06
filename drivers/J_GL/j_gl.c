@@ -515,9 +515,9 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t*
   j_color col = decal_dat == NULL ? WHITE : decal_dat->col;
   j_color bg_col = decal_dat == NULL ? BLACK : decal_dat->bg_col;
   j_color ret_byte = 0x00;
-  if(ram_crop[0] == NULL) {
-    printk("Hello?\n");
-    if(anim_dat != NULL) {
+
+  if(ram_crop[0] == 0) {
+    if(anim_dat != NULL) { // Animation
       uint8_t *percentage = &(anim_dat->percentage);
       j_color bg_col_user = anim_dat->bg_col;
       j_color bg_col_weighted = (100 - *percentage) * bg_col_user;
@@ -531,8 +531,7 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t*
         if(pixel_count%8 == 7) k++;
         pixel_count++;
       }
-    } else {
-      printk("Entered!");
+    } else { // Regular ram load
       size_t i;
       k = i = pixel_count = 0;
       for(; i < len; i+=3) { 
@@ -551,7 +550,7 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t*
 
 int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t* ram_crop, j_animation_data* anim_dat, j_component* comp) {
   // ram_crop has the following data: [OG_X, OG_Y, CROP_X, CROP_Y, LR]
-  if(ram_crop[0] == NULL) {
+  if(ram_crop[0] == 0) {
 
     if(anim_dat != NULL) { // Animations (FADEIN-FADEOUT)
       uint8_t bg_col_B, bg_col_G, bg_col_R;
@@ -629,7 +628,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
 
   // 
   if(ram_cmd[2] == ram_cmd[0] && ram_cmd[3] == ram_cmd[1]) {
-    ram_cmd[0] = NULL; // No cropping needed, simplify spi write.
+    ram_cmd[0] = 0; // No cropping needed, simplify spi write.
     chunk_size = (RAM_DATA_SIZE/(length*8)) * (length*8);
   } else {
     height = ram_cmd[3];
