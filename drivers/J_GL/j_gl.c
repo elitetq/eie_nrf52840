@@ -552,7 +552,8 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t*
 int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, uint16_t* ram_crop, j_animation_data* anim_dat, j_component* comp) {
   // ram_crop has the following data: [OG_X, OG_Y, CROP_X, CROP_Y, LR]
   if(ram_crop[0] == NULL) {
-    if(anim_dat != NULL) {
+
+    if(anim_dat != NULL) { // Animations (FADEIN-FADEOUT)
       uint8_t bg_col_B, bg_col_G, bg_col_R;
       uint8_t *percentage = &(anim_dat->percentage);
       bg_col_B = anim_dat->bg_col & 0x0000FF;
@@ -704,7 +705,7 @@ void ram_draw_image_helper(int x_coord, int y_coord, j_component* comp, j_animat
   ram_draw_image(x_coord,y_coord,comp,anim);
 }
 
-j_component* create_component(char* name, j_type type, uint16_t x, uint16_t y, void* dat, void* dat2) {
+j_component* create_component(char* name, j_type type, int16_t x, int16_t y, void* dat, void* dat2) {
   printk("\nCreate_component y: %d\n\n",y);
   j_component* ret = malloc(sizeof(j_component));
   if(ret == NULL) {

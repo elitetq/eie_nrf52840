@@ -167,7 +167,7 @@ typedef struct j_component j_component;
 struct j_component {
   char* name;
   j_type type;
-  uint16_t x, y;
+  int16_t x, y;
   void* dat; // Often used for direct data, such as text contents or image data.
   void* dat2; // Often used for cosmetic data, such as colors, size, etc...
   j_component* next_ptr;
@@ -305,7 +305,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
  */
 int draw_text(uint16_t x, uint16_t y, char* str, uint8_t font_size, j_color FILL_COL, j_color BG_COL);
 
-j_component* create_component(char* name, j_type type, uint16_t x, uint16_t y, void* dat, void* dat2);
+j_component* create_component(char* name, j_type type, int16_t x, int16_t y, void* dat, void* dat2);
 // void add_component(j_component* component);
 // void remove_component(j_component* component);
 // void change_component_index(j_component* component, uint8_t new_index);

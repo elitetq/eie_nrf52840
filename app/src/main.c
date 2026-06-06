@@ -15,7 +15,7 @@
 #include <math.h>
 #include "J_GL.h"
 #include "J_ASSETS.h"
-#include "SOJOURN_ASSETS.h"
+#include "J_SOJOURN_ASSETS.h"
 
 #include "sojourn_os_smf.h"
 
@@ -63,6 +63,7 @@ int main(void) {
 
   while(1) {
     int ret = state_machine_run();
+    // int ret = 0;
     if(0>ret) {
       printk("Error occured\n");
       return 0;
