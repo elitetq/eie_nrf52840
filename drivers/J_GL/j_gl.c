@@ -514,8 +514,9 @@ int draw_text(uint16_t x, uint16_t y, char* str, uint8_t font_size, j_color FILL
 
 int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_ctx ram_ctx, j_animation_data* anim_dat, j_component* comp) {
   // ram_crop has the following data: [OG_X, OG_Y, CROP_X, CROP_Y, LR]
-  size_t pixel_count, k;
-  k = pixel_count = 0;
+  size_t i, num_pixels;
+  i = 0;
+  num_pixels = len/3;
   j_decal_data* decal_dat = (j_decal_data*)comp->dat2;
   j_color col = decal_dat == NULL ? WHITE : decal_dat->col;
   j_color bg_col = decal_dat == NULL ? BLACK : decal_dat->bg_col;
@@ -527,30 +528,41 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_
       j_color bg_col_user = anim_dat->bg_col;
       j_color bg_col_weighted = (100 - *percentage) * bg_col_user;
       j_color col_weighted;
-      for(size_t i = 0; i < len; i+=3) { 
-        ret_byte = data[k] & ((0x80) >> pixel_count%8) ? col : bg_col;
+      for(; i < num_pixels; i++) { 
+        ret_byte = data[i/8] & ((0x80) >> i%8) ? col : bg_col;
         col_weighted = *percentage * ret_byte;
-        ram_data[i] = (col_weighted + bg_col_weighted)/100;
-        ram_data[i+1] = (col_weighted + bg_col_weighted)/100;
-        ram_data[i+2] = (col_weighted + bg_col_weighted)/100;
-        if(pixel_count%8 == 7) k++;
-        pixel_count++;
+        ram_data[i*3] = (col_weighted + bg_col_weighted)/100;
+        ram_data[i*3+1] = (col_weighted + bg_col_weighted)/100;
+        ram_data[i*3+2] = (col_weighted + bg_col_weighted)/100;
       }
     } else { // Regular ram load
-      size_t i;
-      k = i = pixel_count = 0;
-      for(; i < len; i+=3) { 
-        ret_byte = data[k] & ((0x80) >> pixel_count%8) ? col : bg_col;
-        ram_data[i] = ret_byte;
-        ram_data[i+1] = ret_byte >> 8;
-        ram_data[i+2] = ret_byte >> 16;
-        if(pixel_count%8 == 7) k++;
-        pixel_count++;
+      for(; i < num_pixels; i++) { 
+        ret_byte = data[i/8] & ((0x80) >> i%8) ? col : bg_col;
+        ram_data[i*3] = ret_byte;
+        ram_data[i*3+1] = ret_byte >> 8;
+        ram_data[i*3+2] = ret_byte >> 16;
       }
     }
-    return k;
+    return num_pixels;
+  } else { // CROP LOGIC
+    uint16_t X_L,X_H,LINE_LENGTH,OFFSET,CROP_LINE_LENGTH;
+    X_L = ram_ctx.x_l;
+    X_H = ram_ctx.x_h;
+
+    CROP_LINE_LENGTH = X_H-X_L;
+    LINE_LENGTH = ram_ctx.og_x_len;
+    OFFSET = X_L;
+    uint16_t cur_pixel;
+
+    for(; i < num_pixels; i++) {
+      cur_pixel = i%CROP_LINE_LENGTH + (i/CROP_LINE_LENGTH)*LINE_LENGTH + OFFSET;
+      ret_byte = data[cur_pixel/8] & ((0x80) >> cur_pixel%8) ? col : bg_col;
+      ram_data[i*3] = ret_byte;
+      ram_data[i*3+1] = ret_byte >> 8;
+      ram_data[i*3+2] = ret_byte >> 16;
+    }
+    return (num_pixels/CROP_LINE_LENGTH)*LINE_LENGTH;
   }
-  //NOTE: NO crop algorithm for decals.
 }
 
 int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_ctx ram_ctx, j_animation_data* anim_dat, j_component* comp) {
@@ -586,7 +598,7 @@ int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_ctx ra
       ram_data[i] = data[OFFSET_LENGTH + LINE_LENGTH*(i/CROP_LINE_LENGTH) + i%CROP_LINE_LENGTH];
     
     }
-    return LINE_LENGTH*(len/CROP_LINE_LENGTH);
+    return LINE_LENGTH*(len/CROP_LINE_LENGTH); // Dont include offset_length, will be included by next time
   }
 }
 
@@ -600,6 +612,8 @@ void ram_draw_cb(const struct device *dev, int result, void *data) {
   //printk("Write flag is set to 1\n");
 }
 
+
+// TO-DO: Make decal take in the ram_load return and shift the next time it goes in
 void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animation_data* anim) {  
 
   const uint8_t* img_data = (uint8_t*)component->dat;
