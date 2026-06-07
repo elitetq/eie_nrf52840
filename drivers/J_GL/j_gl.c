@@ -337,6 +337,14 @@ void J_init(const struct device* dev_spi, const struct device* dev_i2c, const st
   for(size_t i = 0; i < top_bound; i++) {
     color_data_2[i] = 0xFF;
   }
+  if(!device_is_ready(dev_spi))
+    return 0;
+  if(!gpio_is_ready_dt(dcx_gpio))
+    return 0;
+  if(gpio_pin_configure_dt(dcx_gpio,GPIO_OUTPUT_LOW))
+    return 0;
+  if(0 > i2c_configure(dev_i2c,I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER))
+    return 0;
 }
 
 void J_LCD_init() {

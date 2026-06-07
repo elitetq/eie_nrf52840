@@ -46,14 +46,6 @@ const struct spi_config spi_cfg = {
 
 
 int main(void) {
-  if(!device_is_ready(dev))
-    return 0;
-  if(!gpio_is_ready_dt(&dcx_gpio))
-    return 0;
-  if(gpio_pin_configure_dt(&dcx_gpio,GPIO_OUTPUT_LOW))
-    return 0;
-  if(0 > i2c_configure(dev_i2c,I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER))
-    return 0;
   if(0 > BTN_init())
     return 0;
   if(0 > LED_init())
