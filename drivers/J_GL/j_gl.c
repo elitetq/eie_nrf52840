@@ -1,9 +1,10 @@
 #include "J_GL.h"
 /*----------------------------------------------------------
-                Global Zephyr Variables Struct
+            Global Zephyr Variables Struct + Defines
 ----------------------------------------------------------*/
 static struct J_CONTAINER J_CONTAINER_t = {0};
 static j_component* temp_component = NULL;
+#define J_GL_VERSION 1.1
 
 /*----------------------------------------------------------
                           Buffers
@@ -31,8 +32,8 @@ static j_linked_list comp_linked_list = {.start = NULL, .end = NULL};
 static j_spi_ctx J_CTX1 = {color_data_2,color_data,0x00}; // Used in ram_draw function
 
 typedef struct {
-  uint16_t x_l, x_h;
-  uint16_t og_x_len;
+  uint16_t x_l, x_h, og_x_len;
+  uint16_t bit_offset; // Used for decals
   uint8_t ram_load_flags; // [ N/A N/A N/A N/A N/A N/A N/A crop_flag]
 } ram_load_ctx;
 /*----------------------------------------------------------
@@ -40,6 +41,11 @@ typedef struct {
 ----------------------------------------------------------*/
 
 void shape_draw_rectangle(j_component* comp, j_shape_data* shape_dat, j_animation_data* anim_dat) {
+
+  #ifdef J_GL_DEVELOPER_MODE
+    printk("J_GL_DEV: Drawing rectangle |");
+  #endif
+
   j_centering CENTERING = shape_dat->centering;
   uint16_t x, y, x2, y2;
   x = comp->x - (CENTERING == J_LEFT ? 0 : shape_dat->length / (3-CENTERING));
@@ -72,7 +78,8 @@ void shape_draw_rectangle(j_component* comp, j_shape_data* shape_dat, j_animatio
         draw_col = (percentage * col_B + (100 - percentage) * bg_col_B)/100 + 
                   ((percentage * col_G + (100 - percentage) * bg_col_G)/100 << 8) +
                   ((percentage * col_R + (100 - percentage) * bg_col_R)/100 << 16);
-        printk("%d\n",draw_col);
+        
+
         draw_color_fs(draw_col);
         k_msleep(101 - increment);
         percentage += 1;
@@ -521,6 +528,7 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_
   j_color col = decal_dat == NULL ? WHITE : decal_dat->col;
   j_color bg_col = decal_dat == NULL ? BLACK : decal_dat->bg_col;
   j_color ret_byte = 0x00;
+  size_t cur_pixel;
 
   if((ram_ctx.ram_load_flags & 0x01) == 0) {
     if(anim_dat != NULL) { // Animation
@@ -529,7 +537,8 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_
       j_color bg_col_weighted = (100 - *percentage) * bg_col_user;
       j_color col_weighted;
       for(; i < num_pixels; i++) { 
-        ret_byte = data[i/8] & ((0x80) >> i%8) ? col : bg_col;
+        cur_pixel = (i+ram_ctx.bit_offset);
+        ret_byte = data[cur_pixel/8] & ((0x80) >> cur_pixel%8) ? col : bg_col;
         col_weighted = *percentage * ret_byte;
         ram_data[i*3] = (col_weighted + bg_col_weighted)/100;
         ram_data[i*3+1] = (col_weighted + bg_col_weighted)/100;
@@ -537,7 +546,8 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_
       }
     } else { // Regular ram load
       for(; i < num_pixels; i++) { 
-        ret_byte = data[i/8] & ((0x80) >> i%8) ? col : bg_col;
+        cur_pixel = (i+ram_ctx.bit_offset);
+        ret_byte = data[cur_pixel/8] & ((0x80) >> cur_pixel%8) ? col : bg_col;
         ram_data[i*3] = ret_byte;
         ram_data[i*3+1] = ret_byte >> 8;
         ram_data[i*3+2] = ret_byte >> 16;
@@ -551,11 +561,10 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_
 
     CROP_LINE_LENGTH = X_H-X_L;
     LINE_LENGTH = ram_ctx.og_x_len;
-    OFFSET = X_L;
-    uint16_t cur_pixel;
+    OFFSET = ram_ctx.og_x_len-X_H;
 
     for(; i < num_pixels; i++) {
-      cur_pixel = i%CROP_LINE_LENGTH + (i/CROP_LINE_LENGTH)*LINE_LENGTH + OFFSET;
+      cur_pixel = ram_ctx.bit_offset + i%CROP_LINE_LENGTH + (i/CROP_LINE_LENGTH)*LINE_LENGTH + OFFSET;
       ret_byte = data[cur_pixel/8] & ((0x80) >> cur_pixel%8) ? col : bg_col;
       ram_data[i*3] = ret_byte;
       ram_data[i*3+1] = ret_byte >> 8;
@@ -593,7 +602,8 @@ int ram_load(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_ctx ra
 
     LINE_LENGTH = ram_ctx.og_x_len * 3;
     CROP_LINE_LENGTH = (X_H-X_L)*3;
-    OFFSET_LENGTH = X_L * 3;
+    OFFSET_LENGTH = (ram_ctx.og_x_len-X_H) * 3; // Image array is line-by-line reversed
+
     for(size_t i = 0; i < len; i++) {
       ram_data[i] = data[OFFSET_LENGTH + LINE_LENGTH*(i/CROP_LINE_LENGTH) + i%CROP_LINE_LENGTH];
     
@@ -624,7 +634,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   uint16_t LCD_LENGTH = LCD_MAX_HEIGHT;
   uint16_t LCD_HEIGHT = LCD_MAX_LENGTH;
 
-  int (*ram_draw_func)(uint8_t*, const uint8_t*, size_t, ram_load_ctx, j_animation_data*, j_component*) = component->type - J_IMAGE ? ram_load_decal : ram_load; // Load decal or image
+  int (*ram_load_func)(uint8_t*, const uint8_t*, size_t, ram_load_ctx, j_animation_data*, j_component*) = component->type - J_IMAGE ? ram_load_decal : ram_load; // Load decal or image
   
   uint16_t x, y;
   if(x_coord > 0)
@@ -646,6 +656,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
     .x_l = 0,
     .x_h = 0,
     .og_x_len = length,
+    .bit_offset = 0,
     .ram_load_flags = 0
   };
   if(x_coord + length - 1 > 0 && x_coord < LCD_LENGTH) {
@@ -666,10 +677,9 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   size_t chunk_size;
 
   const uint8_t* old_img_data = img_data;
-  img_data = img_data + 4 + (y_coord < 0 ? length * -3 * y_coord : 0); // Image data actually starts here
-  
+  size_t pixels_skip = component->type == J_DECAL ? length * -y_coord : length * -3 * y_coord;
+  img_data = img_data + 4 + (y_coord < 0 ? pixels_skip : 0); // Image data actually starts here
 
-  // 
   if(ram_cmd.ram_load_flags & 0x01) {
     length = ram_cmd.x_h - ram_cmd.x_l;
     height = y_h - y_l;
@@ -695,14 +705,19 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   lcd_cmd(CMD_MEMORY_WRITE,NULL);
   
   gpio_pin_set_dt(J_CONTAINER_t.dcx_gpio,1);
-  ram_cmd_ret = ram_draw_func(color_data,img_data,chunk_size,ram_cmd,anim,component); // Will return the correct location where ram_load left off
+  ram_cmd_ret = ram_load_func(color_data,img_data,chunk_size,ram_cmd,anim,component); // Will return the correct location where ram_load left off
   spi_transceive_cb(J_CONTAINER_t.dev_spi,J_CONTAINER_t.spi_cfg,&color_data_set,NULL,ram_draw_cb,NULL);
   while(offset < size) {
+    if(component->type == J_DECAL) {
+      ram_cmd.bit_offset = ram_cmd_ret % 8;
+      ram_cmd_ret = ram_cmd_ret / 8;
+    }
     if(offset + chunk_size > size)
       chunk_size = size - offset;
+
     img_data += ram_cmd_ret;
     offset += chunk_size;
-    ram_draw_func(J_CTX1.buf_ptr,img_data,chunk_size,ram_cmd,anim,component);
+    ram_cmd_ret = ram_load_func(J_CTX1.buf_ptr,img_data,chunk_size,ram_cmd,anim,component);
     color_data_buf.buf = J_CTX1.buf_ptr;
     color_data_buf.len = chunk_size;
 

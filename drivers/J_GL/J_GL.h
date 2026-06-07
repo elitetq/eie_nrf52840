@@ -13,6 +13,8 @@
 #include <J_ASSETS.h>
 #include <stdlib.h>
 
+#define J_GL_DEVELOPER_MODE 
+
 /*----------------------------------------------------------
           Touch Sensor Registry/Variable Defines
 ----------------------------------------------------------*/
