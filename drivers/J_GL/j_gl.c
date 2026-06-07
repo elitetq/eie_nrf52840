@@ -631,7 +631,6 @@ void ram_draw_cb(const struct device *dev, int result, void *data) {
 }
 
 
-// TO-DO: Make decal take in the ram_load return and shift the next time it goes in
 void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animation_data* anim) {  
 
   const uint8_t* img_data = (uint8_t*)component->dat;
@@ -788,6 +787,32 @@ j_component* create_component(char* name, j_type type, int16_t x, int16_t y, voi
   ret->type = type;
   ret->x = x;
   ret->y = y;
+  ret->tag = 0; // Default tag
+  ret->dat = dat;
+  ret->dat2 = dat2;
+  ret->next_ptr = ret->prev_ptr = NULL;
+  return ret;
+}
+
+j_component* create_component_t(uint16_t tag, char* name, j_type type, int16_t x, int16_t y, void* dat, void* dat2) {
+  printk("\nCreate_component y: %d\n\n",y);
+  j_component* ret = malloc(sizeof(j_component));
+  if(ret == NULL) {
+    while(1) {
+      printk("NULL!\n\n");
+    }
+  }
+  if(type == J_BUTTON) {
+    j_button_data* button_dat = (j_button_data*)dat2;
+    if(button_dat != NULL) {
+      button_dat->decal_ptr = button_dat->decal_dat == NULL ? NULL : create_component("",J_DECAL,0,0,NULL,NULL);
+    }
+  }
+  ret->name = name;
+  ret->type = type;
+  ret->x = x;
+  ret->y = y;
+  ret->tag = tag;
   ret->dat = dat;
   ret->dat2 = dat2;
   ret->next_ptr = ret->prev_ptr = NULL;
