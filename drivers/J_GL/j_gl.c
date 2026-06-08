@@ -161,6 +161,8 @@ void (*shape_draw_funcs[])(j_component*, j_shape_data*, j_animation_data*) = {
                         Draw Handlers
 ----------------------------------------------------------*/
 void draw_handle_button(j_component* comp) {
+  if(comp == NULL) return;
+
   j_button_data button_default = {.border_width = 1, .bg_col = WHITE, .border_col = GRAY, .col = BLACK, .height = 30, .length = 80, .font_size = FONT_MEDIUM, .pressed_status = 0};
   j_button_data* button_dat = comp->dat2 == NULL ? &button_default : (j_button_data*)comp->dat2;
   uint8_t* decal_dat = button_dat->decal_dat;
@@ -220,12 +222,16 @@ void draw_handle_button(j_component* comp) {
 }
 
 void draw_handle_shape(j_component* comp) {
+  if(comp == NULL) return;
+
   j_shape_data* shape_dat = (j_shape_data*)comp->dat;
   j_animation_data* anim_dat = (j_animation_data*)comp->dat2;
   shape_draw_funcs[shape_dat->type](comp,shape_dat,anim_dat);
 }
 
 void draw_handle_text(j_component* comp) {
+  if(comp == NULL) return;
+
   char* text_str = (char*)(comp->dat);
   uint16_t len = 0;
   while(text_str[len]) len++;
@@ -240,6 +246,7 @@ void draw_handle_text(j_component* comp) {
 }
 
 void draw_handle_image(j_component* comp) {
+  if(comp == NULL) return;
   j_animation_data* anim_dat = NULL;
   if(comp->type == J_IMAGE) {
     if(comp->dat2 != NULL) anim_dat = (j_animation_data*)comp->dat2;
@@ -253,6 +260,7 @@ void draw_handle_image(j_component* comp) {
 // dat is a uint8_t value from 0 to 100
 // dat2 is a j_bar_data value
 void draw_handle_bar(j_component* comp) {
+  if(comp == NULL) return;
   uint8_t* val = (uint8_t*)(comp->dat);
   j_bar_data default_data = {.bg_col = WHITE, .col = GREEN, .height = 15, .length = 100, .type = J_BAR_LR};
   j_bar_data* bar_dat = comp->dat2 == NULL ? &default_data : (j_bar_data*)(comp->dat2);
@@ -305,6 +313,7 @@ void draw_handle_bar(j_component* comp) {
 
 // dat is a j_color pointer
 void draw_handle_fill(j_component* comp) {
+  if(comp == NULL) return;
   set_bounds((uint16_t[]){0,LCD_MAX_HEIGHT,0,LCD_MAX_LENGTH});
   cmd_bounds();
   j_color* COL = (j_color*)(comp->dat);
@@ -393,7 +402,10 @@ uint32_t get_pos() {
     if(x_pos > LCD_MAX_HEIGHT) {
       x_pos = LCD_MAX_HEIGHT;
     }
-    printk("%d %d\n", x_pos, y_pos);
+
+    #ifdef J_GL_DEVELOPER_MODE
+      printk("%d %d\n", x_pos, y_pos);
+    #endif
     return ((uint32_t)(x_pos) << 16) + (uint32_t)(y_pos);
 }
 
