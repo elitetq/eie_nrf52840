@@ -42,9 +42,7 @@ typedef struct {
 
 void shape_draw_rectangle(j_component* comp, j_shape_data* shape_dat, j_animation_data* anim_dat) {
 
-  #ifdef J_GL_DEVELOPER_MODE
-    printk("J_GL_DEV: Drawing rectangle |");
-  #endif
+  J_LOG("Drawing rectangle |");
 
   j_centering CENTERING = shape_dat->centering;
   uint16_t x, y, x2, y2;
@@ -96,7 +94,7 @@ void shape_draw_rectangle(j_component* comp, j_shape_data* shape_dat, j_animatio
       prev_y2_l = y2;
       bool final_draw = false;
       while(1) {
-        printk("Animation:  ");
+        J_LOG("Animation:  ");
         x_l = (x*(100-percentage) + anim_dat->x_low*(percentage))/100;
         y_l = (y*(100-percentage) + anim_dat->y_low*(percentage))/100;
         x2_l = (x2*(100-percentage) + anim_dat->x_high*(percentage))/100;
@@ -123,7 +121,7 @@ void shape_draw_rectangle(j_component* comp, j_shape_data* shape_dat, j_animatio
         prev_y_l = y_l;
         prev_x2_l = x2_l;
         prev_y2_l = y2_l;
-        printk("Anim finish\n");
+        J_LOG("Anim finish\n");
 
         k_msleep(10);
         percentage += increment;
@@ -403,15 +401,13 @@ uint32_t get_pos() {
       x_pos = LCD_MAX_HEIGHT;
     }
 
-    #ifdef J_GL_DEVELOPER_MODE
-      printk("%d %d\n", x_pos, y_pos);
-    #endif
+    J_LOG("%d %d\n", x_pos, y_pos);
     return ((uint32_t)(x_pos) << 16) + (uint32_t)(y_pos);
 }
 
 int draw_color_fs(j_color COLOR) {
   cmd_bounds();
-  k_msleep(5);
+  // k_msleep(1);
 
   size_t buf_len = (J_CONTAINER_t.bounds[1]-J_CONTAINER_t.bounds[0]+1)*(J_CONTAINER_t.bounds[3]-J_CONTAINER_t.bounds[2]+1);
   for(int i = 0; i < buf_len*3/LCD_BUF_DIV; i += 3) {
@@ -716,11 +712,9 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   size_t repeats = (size / chunk_size);
   set_bounds((uint16_t[]){x, upper_length, y, upper_height});
   cmd_bounds();
-  printk("RAM_DRAW_IMAGE: Image draw w/ %d repeats, %d chunk size, %d size, (%dx%d)\n\n",repeats,chunk_size,size,length,height);
-  k_msleep(10);
+  J_LOG("RAM_DRAW_IMAGE: Image draw w/ %d repeats, %d chunk size, %d size, (%dx%d)\n\n",repeats,chunk_size,size,length,height);
   color_data_buf.buf = color_data;
   color_data_buf.len = chunk_size;
-  k_msleep(5);
   lcd_cmd(CMD_MEMORY_WRITE,NULL);
   
   gpio_pin_set_dt(J_CONTAINER_t.dcx_gpio,1);
@@ -760,7 +754,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   J_CTX1.buf_ptr = color_data_2;
   J_CTX1.buf_ptr_2 = color_data;
   J_CTX1.flags &= 0x00;
-  printk("RAMLOAD: Image written\n");
+  J_LOG("RAMLOAD: Image written\n");
 }
 
 void ram_draw_image_helper(int x_coord, int y_coord, j_component* comp, j_animation_data* anim) {
@@ -782,11 +776,11 @@ void ram_draw_image_helper(int x_coord, int y_coord, j_component* comp, j_animat
 }
 
 j_component* create_component(char* name, j_type type, int16_t x, int16_t y, void* dat, void* dat2) {
-  printk("\nCreate_component y: %d\n\n",y);
+  J_LOG("\nCreate_component y: %d\n\n",y);
   j_component* ret = malloc(sizeof(j_component));
   if(ret == NULL) {
     while(1) {
-      printk("NULL!\n\n");
+      J_LOG("NULL!\n\n");
     }
   }
   if(type == J_BUTTON) {
@@ -807,11 +801,11 @@ j_component* create_component(char* name, j_type type, int16_t x, int16_t y, voi
 }
 
 j_component* create_component_t(uint16_t tag, char* name, j_type type, int16_t x, int16_t y, void* dat, void* dat2) {
-  printk("\nCreate_component y: %d\n\n",y);
+  J_LOG("\nCreate_component y: %d\n\n",y);
   j_component* ret = malloc(sizeof(j_component));
   if(ret == NULL) {
     while(1) {
-      printk("NULL!\n\n");
+      J_LOG("NULL!\n\n");
     }
   }
   if(type == J_BUTTON) {
@@ -990,17 +984,17 @@ j_component* lcd_check_button_pressed_filter(uint16_t x, uint16_t y, uint8_t buf
 uint8_t press_button_visual(j_component* button) {
   if(button != NULL) {
     j_button_data* button_dat = (j_button_data*)(button->dat2);
-    printk("Entered visual %d\n",button_dat->height);
+    J_LOG("Entered visual %d\n",button_dat->height);
     button_dat->pressed_status = 1;
     draw_component(button);
     k_msleep(200);
     button_dat->pressed_status = 0;
-    printk("Drawing button AGAIN");
+    J_LOG("Drawing button AGAIN");
     draw_component(button);
-    printk("Exited visual\n");
+    J_LOG("Exited visual\n");
     return 1;
   }
-  printk("invalid\n");
+  J_LOG("invalid\n");
   return 0;
 }
 
@@ -1074,19 +1068,19 @@ void change_component_index_o(j_component* component, uint8_t new_index) {
 
 void print_components_o() {
   j_component* cur = comp_linked_list.start;
-  printk("Printing components...\n\n");
+  J_LOG("Printing components...\n\n");
   char* strings[] = {"J_BUTTON","J_SHAPE","J_TEXT","J_IMAGE","J_BAR","J_FILL"};
   int i = 0;
   for(; i < MAX_LINKED_LIST_SIZE; i++) {
     if(cur == NULL) break;
-    printk("[%d] \"%s\"\t[x: %d, y: %d, type: %s, data: %s]\n", i, cur->name, cur->x, cur->y, strings[cur->type], cur->dat == NULL ? "NULL" : "OK");
+    J_LOG("[%d] \"%s\"\t[x: %d, y: %d, type: %s, data: %s]\n", i, cur->name, cur->x, cur->y, strings[cur->type], cur->dat == NULL ? "NULL" : "OK");
     cur = cur->next_ptr;
   }
-  printk("\nFound %d items...\n\n", i);
+  J_LOG("\nFound %d items...\n\n", i);
 }
 
 void draw_screen_o(int8_t* exclude_list, size_t len) {
-  printk("DRAW_SCREEN: Redrawing screen...\n\n");
+  J_LOG("DRAW_SCREEN: Redrawing screen...\n\n");
   uint8_t exclude_flag = 1;
   j_component* cur = comp_linked_list.start;
   for(int i = 0; i < MAX_LINKED_LIST_SIZE; i++) {
@@ -1143,13 +1137,13 @@ int poll_touch_timeout(uint16_t* x, uint16_t* y, int timeout) {
 void clear_draw_buffer() {
   j_component* cur = comp_linked_list.start;
   j_component* next_cur;
-  if(cur == NULL) printk("Its null\n");
+  if(cur == NULL) J_LOG("Its null\n");
   for(int i = 0; i < MAX_LINKED_LIST_SIZE; i++) {
     if(cur == NULL) break;
     next_cur = cur->next_ptr;
     cur->next_ptr = NULL;
     cur->prev_ptr = NULL;
-    printf("deleted %s\n",cur->name);
+    J_LOG("deleted %s\n",cur->name);
     free_component(cur);
     cur = next_cur;
   }
@@ -1160,7 +1154,7 @@ void free_component(j_component* comp) {
   if(comp == NULL) return;
   if(comp->type == J_BUTTON) {
     j_button_data* button_dat = (j_button_data*)comp->dat2;
-    printk("\n\nPointer after: %p\n",(void*)button_dat);
+    J_LOG("\n\nPointer after: %p\n",(void*)button_dat);
     if(button_dat != NULL && button_dat->decal_ptr != NULL) {
       free(button_dat->decal_ptr);
       button_dat->decal_ptr = NULL;

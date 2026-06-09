@@ -13,7 +13,13 @@
 #include <J_ASSETS.h>
 #include <stdlib.h>
 
-#define J_GL_DEVELOPER_MODE 
+#define J_GL_DEVELOPER_MODE 0   /* 1 = debug logs on, 0 = off */
+
+#if J_GL_DEVELOPER_MODE
+  #define J_LOG(fmt, ...)  printk("[J_GL] " fmt, ##__VA_ARGS__)
+#else
+  #define J_LOG(fmt, ...)  ((void)0)
+#endif
 
 /*----------------------------------------------------------
           Touch Sensor Registry/Variable Defines
