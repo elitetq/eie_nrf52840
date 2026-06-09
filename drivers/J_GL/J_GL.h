@@ -13,7 +13,11 @@
 #include <J_ASSETS.h>
 #include <stdlib.h>
 
-#define J_GL_VERSION 1.2
+extern const uint16_t Font7x10[];
+extern const uint16_t Font11x18[];
+extern const uint16_t Font16x26[];
+
+#define J_GL_VERSION 1.3
 #define J_GL_DEVELOPER_MODE 0   /* 1 = debug logs on (warning: slower image writing), 0 = off */
 
 #if J_GL_DEVELOPER_MODE
