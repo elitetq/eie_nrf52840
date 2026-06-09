@@ -1,4 +1,7 @@
 #include "J_GL.h"
+extern uint8_t j_fonts_x_len[3];
+extern uint8_t j_fonts_y_len[3];
+extern uint16_t* j_fonts[3];
 /*----------------------------------------------------------
             Global Zephyr Variables Struct + Defines
 ----------------------------------------------------------*/
