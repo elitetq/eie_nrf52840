@@ -4,7 +4,6 @@
 ----------------------------------------------------------*/
 static struct J_CONTAINER J_CONTAINER_t = {0};
 static j_component* temp_component = NULL;
-#define J_GL_VERSION 1.1
 
 /*----------------------------------------------------------
                           Buffers
