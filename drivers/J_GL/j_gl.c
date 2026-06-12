@@ -553,14 +553,19 @@ int ram_load_decal(uint8_t* ram_data, const uint8_t* data, size_t len, ram_load_
       uint8_t *percentage = &(anim_dat->percentage);
       j_color bg_col_user = anim_dat->bg_col;
       j_color bg_col_weighted = (100 - *percentage) * bg_col_user;
-      j_color col_weighted;
+      j_color col_weighted_R, col_weighted_G, col_weighted_B;
       for(; i < num_pixels; i++) { 
         cur_pixel = (i+ram_ctx.bit_offset);
         ret_byte = data[cur_pixel/8] & ((0x80) >> cur_pixel%8) ? col : bg_col;
-        col_weighted = *percentage * ret_byte;
-        ram_data[i*3] = (col_weighted + bg_col_weighted)/100;
-        ram_data[i*3+1] = (col_weighted + bg_col_weighted)/100;
-        ram_data[i*3+2] = (col_weighted + bg_col_weighted)/100;
+        col_weighted_R = *percentage * ((ret_byte) & 0xFF);
+        col_weighted_G = *percentage * ((ret_byte >> 8) & 0xFF);
+        col_weighted_B = *percentage * ((ret_byte >> 16) & 0xFF);
+        uint8_t all_col_weighted_R = (col_weighted_R + bg_col_weighted)/100;
+        uint8_t all_col_weighted_G = (col_weighted_G + bg_col_weighted)/100;
+        uint8_t all_col_weighted_B = (col_weighted_B + bg_col_weighted)/100;
+        ram_data[i*3] = all_col_weighted_R;
+        ram_data[i*3+1] = all_col_weighted_G;
+        ram_data[i*3+2] = all_col_weighted_B;
       }
     } else { // Regular ram load
       for(; i < num_pixels; i++) { 
@@ -693,9 +698,23 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   size_t ram_cmd_ret;
   size_t chunk_size;
 
-  const uint8_t* old_img_data = img_data;
-  size_t pixels_skip = component->type == J_DECAL ? length * -y_coord : length * -3 * y_coord;
-  img_data = img_data + 4 + (y_coord < 0 ? pixels_skip : 0); // Image data actually starts here
+  img_data += 4; // skip the 4-byte header; pixel data actually starts here
+  if(y_coord < 0) {
+    // Clipped off the top: skip the first -y_coord rows of the source bitmap.
+    if(component->type == J_DECAL) {
+      // Decal is 1 bit/pixel, so -y_coord rows == (length * -y_coord) BITS, not bytes.
+      // Advance the byte pointer by the whole-byte part and carry the leftover
+      // sub-byte count in bit_offset (the crop/load path reads from there).
+      // The old code added the bit count straight onto img_data, over-advancing
+      // 8x and rendering a shifted/garbled sprite.
+      size_t skip_bits = (size_t)length * (-y_coord);
+      img_data += skip_bits / 8;
+      ram_cmd.bit_offset = skip_bits % 8;
+    } else {
+      // Image is 3 bytes/pixel, so a row skip is a plain byte offset.
+      img_data += (size_t)length * 3 * (-y_coord);
+    }
+  }
 
   if(ram_cmd.ram_load_flags & 0x01) {
     length = ram_cmd.x_h - ram_cmd.x_l;
@@ -724,8 +743,15 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
   spi_transceive_cb(J_CONTAINER_t.dev_spi,J_CONTAINER_t.spi_cfg,&color_data_set,NULL,ram_draw_cb,NULL);
   while(offset < size) {
     if(component->type == J_DECAL) {
-      ram_cmd.bit_offset = ram_cmd_ret % 8;
-      ram_cmd_ret = ram_cmd_ret / 8;
+      // ram_cmd_ret is the number of source BITS consumed by the last chunk,
+      // measured from the previous base (img_data*8 + bit_offset). It does NOT
+      // include the old bit_offset, so we must carry it forward here, otherwise
+      // the leftover sub-byte offset is lost every iteration and chunks 3+ read
+      // from a source position shifted by -(prev bit_offset). This only bites
+      // when og_x_len isn't a multiple of 8 (so a row doesn't land on a byte).
+      size_t total_bits = ram_cmd.bit_offset + ram_cmd_ret; // accumulate, don't overwrite
+      ram_cmd.bit_offset = total_bits % 8;                  // new sub-byte offset (0-7)
+      ram_cmd_ret = total_bits / 8;                         // whole bytes to advance img_data
     }
     if(offset + chunk_size > size)
       chunk_size = size - offset;
@@ -761,7 +787,7 @@ void ram_draw_image(int x_coord, int y_coord, j_component* component, j_animatio
 
 void ram_draw_image_helper(int x_coord, int y_coord, j_component* comp, j_animation_data* anim) {
   if(anim != NULL) {
-    uint8_t increment = anim->increment_speed ? anim->increment_speed : 1;
+    uint8_t increment = anim->increment_speed > 0 ? anim->increment_speed : 1;
     while(1) {
       if(anim->percentage == 100) {
         k_msleep(1000);
